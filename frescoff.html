@@ -2,9 +2,207 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF8">
 	<title>FresCoff</title>
+	<script type="text/javascript">
+		var canvas_transmision_ctx;
+		
+		var xRange=[0, Math.PI/2];
+		var yRange=[-1,1];
+
+		var axisConf={
+			x: 20,
+			y: 20
+		};
+
+		function line(ctx, fx,fy,tx,ty){
+			var _fx, _fy, _tx, _ty;
+
+			
+			var _KX=2*(ctx.canvas.width-2*axisConf.x)/Math.PI;
+			var _KY=(ctx.canvas.height-axisConf.y)/2;
+
+			
+
+			_fx=_KX*fx+20;
+			_fy=_KY-_KY*fy;
+			
+
+			_tx=_KX*tx+20;
+			_ty=_KY-_KY*ty;
+
+			ctx.beginPath();
+			
+			ctx.moveTo(_fx,_fy);
+			ctx.lineTo(_tx,_ty);
+			ctx.stroke();
+		}
+
+		function axis(ctx){
+
+			
+			
+			// X axis
+			ctx.beginPath();
+			ctx.strokeStyle="#000000";
+			ctx.moveTo(axisConf.y, ctx.canvas.height-axisConf.x);
+			ctx.lineTo(ctx.canvas.width, ctx.canvas.height-axisConf.x);
+			ctx.stroke();
+
+			// X axis middle
+			ctx.beginPath();
+			ctx.strokeStyle="#CCC";
+			ctx.moveTo(ctx.canvas.width/2 ,0);
+			ctx.lineTo(ctx.canvas.width/2,(ctx.canvas.height-axisConf.x));
+			ctx.stroke();
+
+
+			// X axis end
+			ctx.beginPath();
+			ctx.strokeStyle="#CCC";
+			ctx.moveTo(ctx.canvas.width-axisConf.x ,0);
+			ctx.lineTo(ctx.canvas.width-axisConf.x ,(ctx.canvas.height-axisConf.x));
+			ctx.stroke();
+
+			// Y axis
+
+			ctx.beginPath();
+			ctx.strokeStyle="#000000";
+			ctx.moveTo(axisConf.y, ctx.canvas.height-axisConf.x);
+			ctx.lineTo(axisConf.y, 0);
+			ctx.stroke();
+
+			// Y axis middle
+			ctx.beginPath();
+			ctx.strokeStyle="#CCC";
+			ctx.moveTo(axisConf.x, 0.5*(ctx.canvas.height-axisConf.x));
+			ctx.lineTo(ctx.canvas.width-axisConf.x, 0.5*(ctx.canvas.height-axisConf.x));
+			ctx.stroke();
+
+			// Y axis legend
+			ctx.font="16px Arial";
+			ctx.fillText(yRange[1].toString(), 5,16);
+			ctx.fillText(((yRange[1]+yRange[0])/2).toString(), 5, 0.5*(ctx.canvas.height-axisConf.x)+5);
+			ctx.fillText(yRange[0].toString(), 5,(ctx.canvas.height-axisConf.x)+5);
+
+			// X axis legend
+
+			ctx.font="16px Arial";
+			ctx.fillText("0", axisConf.x-4, (ctx.canvas.height-axisConf.x)+16);
+			ctx.fillText("\u03C0/4",  0.5*(ctx.canvas.width-axisConf.x)-5 ,(ctx.canvas.height-axisConf.x)+16);
+			ctx.fillText("\u03C0/2", ctx.canvas.width-axisConf.x-12 ,(ctx.canvas.height-axisConf.x)+16);
+
+
+
+		}
+		
+
+
+		function refractAngle(n, _n, phi){
+			return Math.asin(n*Math.sin(phi)/_n);
+		}
+
+
+		var plotter=plotter||{};
+		plotter.plotNReal=function(n,_n, callback, color){
+
+			var _fx, _fy, _tx, _ty, ctx;
+			ctx=canvas_transmision_ctx;
+			
+
+			
+			var _KX=2*(ctx.canvas.width-2*axisConf.x)/Math.PI;
+			var _KY=(ctx.canvas.height-axisConf.y)/2;
+
+			
+
+			
+
+			ctx.beginPath();
+			ctx.strokeStyle=color;
+			
+
+			var angles=[];
+			var step=Math.PI/180;
+			var endd=Math.PI/2+step;
+			var pointX=0;
+			var pointY=0;
+			for(var i = step; i<=endd; i+=step){
+				_fx=_KX*(i-step)+20;
+				_fy=_KY-_KY*callback(n,_n,i-step);
+			
+
+				_tx=_KX*i+20;
+				_ty=_KY-_KY*callback(n,_n,i);
+				ctx.moveTo(_fx,_fy);
+				ctx.lineTo(_tx,_ty);
+			}
+			
+			ctx.stroke();
+			
+
+		}
+
+		plotter.plotNTransmission=function(n,_n){
+			ctx=canvas_transmision_ctx;
+			ctx.clearRect(0,0,ctx.canvas.width, ctx.canvas.height);
+			axis(ctx);
+
+			//ctx.font="10px Arial";
+			//ctx.fillText("Reflexión coefficients", ctx.canvas.width-100, 10);
+			
+			plotter.plotNReal(n,_n, nReal.tPa,"#00FF00");
+			plotter.plotNReal(n,_n, nReal.tPe,"#FF00FF");
+		}
+
+
+		var nReal=nReal||{};
+		nReal.tPe=function(n,_n, phi){// Transmision perpendicular
+			var _phi=refractAngle(n,_n, phi);
+			var a;
+			a=n*Math.cos(phi);
+			return 2*a/(a+_n*Math.cos(_phi));
+		}
+
+		nReal.tPa=function(n,_n, phi){// Transmision paralela
+			var _phi=refractAngle(n,_n, phi);
+			return 2*n*Math.cos(phi)/(n*Math.cos(_phi)+_n*Math.cos(phi));
+		}
+
+		nReal.rPe=function(n,_n, phi){// Reflexión perpendicular
+			var _phi=refractAngle(n,_n, phi);
+			return (n*Math.cos(phi)-_n*Math.cos(_phi))/(n*Math.cos(phi)+_n*Math.cos(_phi));
+		}
+
+		nReal.rPa=function(n,_n, phi){// Reflexión paralela
+			var _phi=refractAngle(n,_n, phi);
+			return (n*Math.cos(_phi)-_n*Math.cos(phi))/(n*Math.cos(_phi)+_n*Math.cos(phi));
+		}
+
+		function transmisionGo(){
+			var n=document.getElementById("n_r").value;
+			var _n=document.getElementById("np_r").value;
+			plotter.plotNTransmission(n,_n);
+		}
+
+		window.onload=function(){
+			canvas_transmision_ctx=document.getElementById('canvas_transmision').getContext("2d");
+			
+			transmisionGo();
+		}
+	</script>
 </head>
 <body>
+	<div id="div_transmission" >
+		<center>Transmission coefficient:</center><br>
+		<canvas id="canvas_transmision" width="600" height="400"></canvas>
+		<table border="0">
+		<tr><td>n=</td><td><input type="text" value="1" style="width:50px" id="n_r"></td><td>n'=</td><td><input type="text" value="1.5" style="width:50px" id="np_r"></td>
+		<td><input type="button" value="GO" onClick="transmisionGo()"></td>
+		<td>T<sub>&#8741;</sub>=<span id="tPa_info">-</span>, T<sub>&#8869;</sub>=<span id="tPe_info">-</span>
+		</tr>
+		</table>
+	</div>
 
 </body>
 </html>
