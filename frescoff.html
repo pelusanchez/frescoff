@@ -4,44 +4,34 @@
 <head>
 	<meta http-equiv="content-type" content="text/html; charset=UTF8">
 	<title>FresCoff</title>
+
+<meta http-equiv="cache-control" content="max-age=0" />
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="expires" content="0" />
+<meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
+<meta http-equiv="pragma" content="no-cache" />
+<script type="text/javascript" src="Complex.js"></script>
 	<script type="text/javascript">
+
+		var colorPe="#FFCE3B";
+		var colorPa="#3B5CFF";
+
 		var canvas_transmision_ctx;
-		
-		var xRange=[0, Math.PI/2];
-		var yRange=[-1,1];
 
 		var axisConf={
 			x: 20,
 			y: 20
 		};
 
-		function line(ctx, fx,fy,tx,ty){
-			var _fx, _fy, _tx, _ty;
+		var plotRange=[];
 
-			
-			var _KX=2*(ctx.canvas.width-2*axisConf.x)/Math.PI;
-			var _KY=(ctx.canvas.height-axisConf.y)/2;
-
-			
-
-			_fx=_KX*fx+20;
-			_fy=_KY-_KY*fy;
-			
-
-			_tx=_KX*tx+20;
-			_ty=_KY-_KY*ty;
-
-			ctx.beginPath();
-			
-			ctx.moveTo(_fx,_fy);
-			ctx.lineTo(_tx,_ty);
-			ctx.stroke();
+		function clean(elm){
+			var ctx=elm.getContext("2d");
+			ctx.clearRect(0,0, elm.width, elm.height);
+			delete plotRange[elm.id];
 		}
 
-		function axis(ctx){
-
-			
-			
+		function axis(ctx, xRange, yRange){
 			// X axis
 			ctx.beginPath();
 			ctx.strokeStyle="#000000";
@@ -72,6 +62,13 @@
 			ctx.lineTo(axisConf.y, 0);
 			ctx.stroke();
 
+			// Y axis top
+			ctx.beginPath();
+			ctx.strokeStyle="#CCC";
+			ctx.moveTo(axisConf.x, axisConf.y);
+			ctx.lineTo(ctx.canvas.width-axisConf.x, axisConf.y);
+			ctx.stroke();
+
 			// Y axis middle
 			ctx.beginPath();
 			ctx.strokeStyle="#CCC";
@@ -80,21 +77,138 @@
 			ctx.stroke();
 
 			// Y axis legend
-			ctx.font="16px Arial";
-			ctx.fillText(yRange[1].toString(), 5,16);
-			ctx.fillText(((yRange[1]+yRange[0])/2).toString(), 5, 0.5*(ctx.canvas.height-axisConf.x)+5);
-			ctx.fillText(yRange[0].toString(), 5,(ctx.canvas.height-axisConf.x)+5);
+			ctx.font="12px Arial";
+			ctx.fillText(cutDecimal(yRange[1]).toString(), 0,axisConf.y+3);
+			ctx.fillText(cutDecimal((yRange[1]+yRange[0])/2).toString(), 1, 0.5*(ctx.canvas.height-axisConf.x)+5);
+			ctx.fillText(cutDecimal(yRange[0]).toString(), 0,(ctx.canvas.height-axisConf.x)+5);
 
 			// X axis legend
 
-			ctx.font="16px Arial";
+			ctx.font="12px Arial";
 			ctx.fillText("0", axisConf.x-4, (ctx.canvas.height-axisConf.x)+16);
 			ctx.fillText("\u03C0/4",  0.5*(ctx.canvas.width-axisConf.x)-5 ,(ctx.canvas.height-axisConf.x)+16);
 			ctx.fillText("\u03C0/2", ctx.canvas.width-axisConf.x-12 ,(ctx.canvas.height-axisConf.x)+16);
-
-
-
 		}
+
+		// Pasa el elemento y los datos en un array [[x1,y,1],...,[xn,yn] ]
+		function plot(elm, data, color, _xRange, _yRange){
+			if(!color){color="#000000";}
+			var ctx=elm.getContext("2d");
+			
+			var minX,minY,maxX,maxY, xRange, yRange;
+
+			if(_xRange){
+				minX=_xRange[0];
+				maxX=_xRange[1];
+				
+				
+			}
+			if(_yRange){
+				minY=_yRange[0];
+				maxY=_yRange[1];
+				
+			}
+
+			if(!plotRange[elm.id]){
+				plotRange[elm.id]=[];
+
+
+				// Look for max and min.
+				if(!_xRange){
+					minX=data[0][0];
+					maxX=data[0][0];
+					for(var i = 1; i<data.length;i++){
+						if(minX>data[i][0]){minX=data[i][0];}
+						if(maxX<data[i][0]){maxX=data[i][0];}
+					}
+					_xRange=[minX, maxX];
+					
+				}
+				
+				if(!_yRange){
+					minY=data[0][1];
+					maxY=data[0][1];
+					for(var i = 1; i<data.length;i++){
+						if(minY>data[i][1]){minY=data[i][1];}
+						if(maxY<data[i][1]){maxY=data[i][1];}
+					}
+					_yRange=[minY, maxY];
+				}
+
+				xRange=_xRange;
+				yRange=_yRange;
+
+				plotRange[elm.id][0]=xRange;
+				plotRange[elm.id][1]=yRange;
+
+				axis(ctx, xRange, yRange);
+			}else{
+				minX=plotRange[elm.id][0][0];
+				minY=plotRange[elm.id][1][0];
+				maxX=plotRange[elm.id][0][1];
+				maxY=plotRange[elm.id][1][1];
+				xRange=[minX, maxX];
+				yRange=[minY, maxY];
+				
+			}
+
+
+			// Create and draw lines
+
+			console.log(elm.id+"Range="+minY+","+maxY+","+yRange);
+			ctx.beginPath();
+			ctx.strokeStyle=color;
+			var endd=data.length;
+
+			var RX=(elm.width-2*axisConf.x)/(maxX-minX);
+
+			var RY=elm.height-2*axisConf.y;
+			var FY=(maxY-minY);
+			ctx.lineWidth=2;
+
+
+
+			ctx.moveTo(axisConf.x+RX*(data[0][0]-minX),axisConf.y+RY*(1-(data[0][1]-minY)/FY));
+			for(var i = 1; i<endd; i++){
+				//console.log(axisConf.x+RX*(data[i][0]-minX)+","+data[i][1]);
+				ctx.lineTo(axisConf.x+RX*(data[i][0]-minX),axisConf.y+RY*(1-(data[i][1]-minY)/FY));
+			}
+			
+			ctx.stroke();
+		};
+
+
+
+		
+		
+
+
+		function cutDecimal(a){
+			return parseInt(a*100)/100;
+		}
+		function line(ctx, fx,fy,tx,ty){
+			var _fx, _fy, _tx, _ty;
+
+			
+			var _KX=2*(ctx.canvas.width-2*axisConf.x)/Math.PI;
+			var _KY=(ctx.canvas.height-axisConf.y)/2;
+
+			
+
+			_fx=_KX*fx+20;
+			_fy=_KY-_KY*fy;
+			
+
+			_tx=_KX*tx+20;
+			_ty=_KY-_KY*ty;
+
+			ctx.beginPath();
+			
+			ctx.moveTo(_fx,_fy);
+			ctx.lineTo(_tx,_ty);
+			ctx.stroke();
+		}
+
 		
 
 
@@ -104,56 +218,411 @@
 
 
 		var plotter=plotter||{};
-		plotter.plotNReal=function(n,_n, callback, color){
-
-			var _fx, _fy, _tx, _ty, ctx;
-			ctx=canvas_transmision_ctx;
-			
-
-			
-			var _KX=2*(ctx.canvas.width-2*axisConf.x)/Math.PI;
-			var _KY=(ctx.canvas.height-axisConf.y)/2;
-
-			
-
-			
-
-			ctx.beginPath();
-			ctx.strokeStyle=color;
-			
-
-			var angles=[];
-			var step=Math.PI/180;
-			var endd=Math.PI/2+step;
-			var pointX=0;
-			var pointY=0;
-			for(var i = step; i<=endd; i+=step){
-				_fx=_KX*(i-step)+20;
-				_fy=_KY-_KY*callback(n,_n,i-step);
-			
-
-				_tx=_KX*i+20;
-				_ty=_KY-_KY*callback(n,_n,i);
-				ctx.moveTo(_fx,_fy);
-				ctx.lineTo(_tx,_ty);
-			}
-			
-			ctx.stroke();
-			
-
-		}
 
 		plotter.plotNTransmission=function(n,_n){
-			ctx=canvas_transmision_ctx;
-			ctx.clearRect(0,0,ctx.canvas.width, ctx.canvas.height);
-			axis(ctx);
-
-			//ctx.font="10px Arial";
-			//ctx.fillText("Reflexión coefficients", ctx.canvas.width-100, 10);
+			var elm=document.getElementById('canvas_transmision');
+			clean(elm);
 			
-			plotter.plotNReal(n,_n, nReal.tPa,"#00FF00");
-			plotter.plotNReal(n,_n, nReal.tPe,"#FF00FF");
+			var elmCtx=elm.getContext('2d');
+			elmCtx.beginPath();
+			elmCtx.rect(axisConf.x*1.5, elm.height-axisConf.y*1.5-60, 100, 60);
+			elmCtx.fillStyle = '#FFF';
+			elmCtx.fill();
+			elmCtx.lineWidth = 1;
+			elmCtx.strokeStyle = 'black';
+			elmCtx.stroke();
+			elmCtx.font="18px Arial ";
+			elmCtx.fillStyle = '#000';
+			elmCtx.fillText("t",axisConf.x*1.5+10,elm.height-axisConf.y*1.5-35);
+			elmCtx.fillText("t",axisConf.x*1.5+10,elm.height-axisConf.y*1.5-15);
+			elmCtx.font="12px Arial ";
+			elmCtx.fillText("\u22A5",axisConf.x*1.5+15,elm.height-axisConf.y*1.5-10);
+			elmCtx.fillText("\u01C1",axisConf.x*1.5+15,elm.height-axisConf.y*1.5-30);
+			
+			elmCtx.beginPath();
+			elmCtx.strokeStyle=colorPe;
+			elmCtx.moveTo(axisConf.x*1.5+40,elm.height-axisConf.y*1.5-16);
+			elmCtx.lineTo(axisConf.x*1.5+60,elm.height-axisConf.y*1.5-16);
+			
+			elmCtx.stroke();
+
+			elmCtx.beginPath();
+			elmCtx.strokeStyle=colorPa;
+			elmCtx.moveTo(axisConf.x*1.5+40,elm.height-axisConf.y*1.5-40);
+			elmCtx.lineTo(axisConf.x*1.5+60,elm.height-axisConf.y*1.5-40);
+			elmCtx.stroke();
+			var dataTransmissionPerpendicular=[];
+			var dataTransmissionParalell=[];
+			var step=Math.PI/2/200;
+			var endd=Math.PI/2;
+
+			var i = step;
+			dataTransmissionPerpendicular.push([0,nReal.tPe(n,_n,i)]);
+			dataTransmissionParalell.push([0, nReal.tPa(n,_n,i)]);
+
+			for(; i<=endd; i+=step){
+				dataTransmissionPerpendicular.push([i,nReal.tPe(n,_n,i)]);
+				dataTransmissionParalell.push([i, nReal.tPa(n,_n,i)]);
+			}
+
+			plot(elm, dataTransmissionParalell, colorPa, [0, Math.PI/2]);
+			plot(elm, dataTransmissionPerpendicular, colorPe, [0, Math.PI/2]);
+			
+			//return dataTransmissionPerpendicular;
+
 		}
+
+
+		plotter.plotNReflexion=function(n,_n){
+			var elm=document.getElementById('canvas_reflexion');
+			clean(elm);
+
+			var elmCtx=elm.getContext('2d');
+			elmCtx.beginPath();
+			elmCtx.rect(axisConf.x*1.5, elm.height-axisConf.y*1.5-60, 100, 60);
+			elmCtx.fillStyle = '#FFF';
+			elmCtx.fill();
+			elmCtx.lineWidth = 1;
+			elmCtx.strokeStyle = 'black';
+			elmCtx.stroke();
+			elmCtx.font="18px Arial ";
+			elmCtx.fillStyle = '#000';
+			elmCtx.fillText("r",axisConf.x*1.5+10,elm.height-axisConf.y*1.5-35);
+			elmCtx.fillText("r",axisConf.x*1.5+10,elm.height-axisConf.y*1.5-15);
+			elmCtx.font="12px Arial ";
+			elmCtx.fillText("\u22A5",axisConf.x*1.5+15,elm.height-axisConf.y*1.5-10);
+			elmCtx.fillText("\u01C1",axisConf.x*1.5+15,elm.height-axisConf.y*1.5-30);
+			
+			elmCtx.beginPath();
+			elmCtx.strokeStyle=colorPe;
+			elmCtx.moveTo(axisConf.x*1.5+40,elm.height-axisConf.y*1.5-16);
+			elmCtx.lineTo(axisConf.x*1.5+60,elm.height-axisConf.y*1.5-16);
+			
+			elmCtx.stroke();
+
+			elmCtx.beginPath();
+			elmCtx.strokeStyle=colorPa;
+			elmCtx.moveTo(axisConf.x*1.5+40,elm.height-axisConf.y*1.5-40);
+			elmCtx.lineTo(axisConf.x*1.5+60,elm.height-axisConf.y*1.5-40);
+			elmCtx.stroke();
+			
+			var dataReflexionPerpendicular=[];
+			var dataReflexionNormal=[];
+			var step=Math.PI/2/200;
+			var endd=Math.PI/2;
+
+			var rPe, rPa;
+
+			var i=step;
+			dataReflexionPerpendicular.push([0,nReal.rPe(n,_n,i)]);
+			dataReflexionNormal.push([0, nReal.rPa(n,_n,i)]);
+
+			for(; i<endd; i+=step){
+
+				dataReflexionPerpendicular.push([i,nReal.rPe(n,_n,i)]);
+				dataReflexionNormal.push([i, nReal.rPa(n,_n,i)]);
+			}
+
+
+
+			plot(elm, dataReflexionPerpendicular, colorPe, [0, Math.PI/2], [-1, 1]);
+			plot(elm, dataReflexionNormal, colorPa, [0, Math.PI/2], [-1, 1]);
+			//return [dataReflexionNormal, dataReflexionPerpendicular];
+
+		}
+
+
+		plotter.plotNTransmissionF=function(n,_n){
+			var elm=document.getElementById('canvas_transmision_factor');
+			clean(elm);
+
+			var elmCtx=elm.getContext('2d');
+			elmCtx.beginPath();
+			elmCtx.rect(axisConf.x*1.5, elm.height-axisConf.y*1.5-60, 100, 60);
+			elmCtx.fillStyle = '#FFF';
+			elmCtx.fill();
+			elmCtx.lineWidth = 1;
+			elmCtx.strokeStyle = 'black';
+			elmCtx.stroke();
+			elmCtx.font="18px Arial ";
+			elmCtx.fillStyle = '#000';
+			elmCtx.fillText("T",axisConf.x*1.5+10,elm.height-axisConf.y*1.5-35);
+			elmCtx.fillText("T",axisConf.x*1.5+10,elm.height-axisConf.y*1.5-15);
+			elmCtx.font="12px Arial ";
+			elmCtx.fillText("\u22A5",axisConf.x*1.5+17,elm.height-axisConf.y*1.5-10);
+			elmCtx.fillText("\u01C1",axisConf.x*1.5+19,elm.height-axisConf.y*1.5-30);
+			
+			elmCtx.beginPath();
+			elmCtx.strokeStyle=colorPe;
+			elmCtx.moveTo(axisConf.x*1.5+40,elm.height-axisConf.y*1.5-16);
+			elmCtx.lineTo(axisConf.x*1.5+60,elm.height-axisConf.y*1.5-16);
+			
+			elmCtx.stroke();
+
+			elmCtx.beginPath();
+			elmCtx.strokeStyle=colorPa;
+			elmCtx.moveTo(axisConf.x*1.5+40,elm.height-axisConf.y*1.5-40);
+			elmCtx.lineTo(axisConf.x*1.5+60,elm.height-axisConf.y*1.5-40);
+			elmCtx.stroke();
+			
+			var dataTransmissionPerpendicular=[];
+			var dataTransmissionParalell=[];
+			var step=Math.PI/2/200;
+			var endd=Math.PI/2;
+
+			var tPeFactor, tPaFactor, konstant;
+
+			var i = step;
+
+			tPeFactor=nReal.tPe(n,_n,i);
+			tPaFactor=nReal.tPa(n,_n,i);
+			konstant=_n/n*Math.cos(refractAngle(n,_n, i))/Math.cos(i);
+
+			dataTransmissionPerpendicular.push([0,tPeFactor*tPeFactor*konstant]);
+			dataTransmissionParalell.push([0, tPaFactor*tPaFactor*konstant]);
+
+			for(; i<endd; i+=step){
+				konstant=_n/n*Math.cos(refractAngle(n,_n, i))/Math.cos(i);
+				tPeFactor=nReal.tPe(n,_n,i);
+				tPaFactor=nReal.tPa(n,_n,i);
+				tPeFactor*=tPeFactor;
+				tPaFactor*=tPaFactor;
+				tPeFactor*=konstant;
+				tPaFactor*=konstant;
+				tPeFactor=(tPeFactor>1)?1:tPeFactor;
+				tPaFactor=(tPaFactor>1)?1:tPaFactor;
+				tPeFactor=(tPeFactor<0)?0:tPeFactor;
+				tPaFactor=(tPaFactor<0)?0:tPaFactor;
+
+				if(tPaFactor!=tPaFactor){tPaFactor=0;}
+				if(tPeFactor!=tPeFactor){tPeFactor=0;}
+
+				dataTransmissionPerpendicular.push([i,tPeFactor]);
+				dataTransmissionParalell.push([i, tPaFactor]);
+			}
+
+			plot(elm, dataTransmissionPerpendicular, colorPe, [0, Math.PI/2],[0,1]);
+
+			plot(elm, dataTransmissionParalell, colorPa, [0, Math.PI/2],[0,1]);
+			
+			
+			return dataTransmissionPerpendicular;
+
+		}
+
+		plotter.plotNReflexionF=function(n,_n){
+			var elm=document.getElementById('canvas_reflexion_factor');
+			clean(elm);
+
+			var elmACtx=elm.getContext('2d');
+			elmACtx.beginPath();
+			elmACtx.rect(axisConf.x*1.5, axisConf.y*1.5, 100, 60);
+			elmACtx.fillStyle = '#FFF';
+			elmACtx.fill();
+			elmACtx.lineWidth = 1;
+			elmACtx.strokeStyle = 'black';
+			elmACtx.stroke();
+			elmACtx.font="18px Arial ";
+			elmACtx.fillStyle = '#000';
+			elmACtx.fillText("R",axisConf.x*1.5+10,axisConf.y*1.5+19);
+			elmACtx.fillText("R",axisConf.x*1.5+10,axisConf.y*1.5+41);
+			elmACtx.font="12px Arial ";
+			elmACtx.fillText("\u01C1",axisConf.x*1.5+19,axisConf.y*1.5+22);
+			elmACtx.fillText("\u22A5",axisConf.x*1.5+19,axisConf.y*1.5+44);
+			
+			elmACtx.beginPath();
+			elmACtx.strokeStyle=colorPa;
+			elmACtx.moveTo(axisConf.x*1.5+40,axisConf.y*1.5+12);
+			elmACtx.lineTo(axisConf.x*1.5+60,axisConf.y*1.5+12);
+			
+			elmACtx.stroke();
+
+			elmACtx.beginPath();
+			elmACtx.strokeStyle=colorPe;
+			elmACtx.moveTo(axisConf.x*1.5+40,axisConf.y*1.5+38);
+			elmACtx.lineTo(axisConf.x*1.5+60,axisConf.y*1.5+38);
+			elmACtx.stroke();
+			
+			var dataTransmissionPerpendicular=[];
+			var dataTransmissionParalell=[];
+			var step=Math.PI/2/200;
+			var endd=Math.PI/2;
+
+			var rPeFactor, rPaFactor;
+
+			rPeFactor=nReal.rPe(n,_n,step);
+			rPaFactor=nReal.rPa(n,_n,step);
+
+			dataTransmissionPerpendicular.push([0,rPeFactor*rPeFactor]);
+			dataTransmissionParalell.push([0,rPaFactor*rPaFactor]);
+
+			for(var i = step; i<endd; i+=step){
+				rPeFactor=nReal.rPe(n,_n,i);
+				rPaFactor=nReal.rPa(n,_n,i);
+				rPeFactor*=rPeFactor;
+				rPaFactor*=rPaFactor;
+
+				rPeFactor=(rPeFactor>1)?1:rPeFactor;
+				rPaFactor=(rPaFactor>1)?1:rPaFactor;
+				rPeFactor=(rPeFactor<0)?0:rPeFactor;
+				rPaFactor=(rPaFactor<0)?0:rPaFactor;
+				if(rPaFactor!=rPaFactor){rPaFactor=0;}
+				if(rPeFactor!=rPeFactor){rPeFactor=0;}
+
+				dataTransmissionPerpendicular.push([i,rPeFactor]);
+				dataTransmissionParalell.push([i, rPaFactor]);
+			}
+
+			
+			
+
+			
+
+			plot(elm, dataTransmissionParalell, colorPa, [0, Math.PI/2],[0,1]);
+			plot(elm, dataTransmissionPerpendicular, colorPe, [0, Math.PI/2],[0,1]);
+			
+			return dataTransmissionPerpendicular;
+
+		}
+
+		plotter.plotReflexionComplex=function(n,_n){
+			var elm=document.getElementById('canvas_reflexion');
+			var elmA=document.getElementById('canvas_transmision');
+			var elmCtx=elm.getContext('2d');
+			var elmACtx=elmA.getContext('2d');
+			clean(elm);
+			clean(elmA);
+
+
+			elmCtx.beginPath();
+			elmCtx.rect(axisConf.x*1.5, elm.height-axisConf.y*1.5-60, 100, 60);
+			elmCtx.fillStyle = '#FFF';
+			elmCtx.fill();
+			elmCtx.lineWidth = 1;
+			elmCtx.strokeStyle = 'black';
+			elmCtx.stroke();
+			elmCtx.font="18px Arial ";
+			elmCtx.fillStyle = '#000';
+			elmCtx.fillText("\u03C6",axisConf.x*1.5+10,elm.height-axisConf.y*1.5-35);
+			elmCtx.fillText("\u03C6",axisConf.x*1.5+10,elm.height-axisConf.y*1.5-15);
+			elmCtx.font="12px Arial ";
+			elmCtx.fillText("\u22A5",axisConf.x*1.5+24,elm.height-axisConf.y*1.5-10);
+			elmCtx.fillText("\u01C1",axisConf.x*1.5+24,elm.height-axisConf.y*1.5-30);
+			
+			elmCtx.beginPath();
+			elmCtx.strokeStyle=colorPe;
+			elmCtx.moveTo(axisConf.x*1.5+40,elm.height-axisConf.y*1.5-16);
+			elmCtx.lineTo(axisConf.x*1.5+60,elm.height-axisConf.y*1.5-16);
+			
+			elmCtx.stroke();
+
+			elmCtx.beginPath();
+			elmCtx.strokeStyle=colorPa;
+			elmCtx.moveTo(axisConf.x*1.5+40,elm.height-axisConf.y*1.5-40);
+			elmCtx.lineTo(axisConf.x*1.5+60,elm.height-axisConf.y*1.5-40);
+			elmCtx.stroke();
+
+
+			elmACtx.beginPath();
+			elmACtx.rect(axisConf.x*1.5, axisConf.y*1.5, 100, 60);
+			elmACtx.fillStyle = '#FFF';
+			elmACtx.fill();
+			elmACtx.lineWidth = 1;
+			elmACtx.strokeStyle = 'black';
+			elmACtx.stroke();
+			elmACtx.font="18px Arial ";
+			elmACtx.fillStyle = '#000';
+			elmACtx.fillText("r",axisConf.x*1.5+10,axisConf.y*1.5+15);
+			elmACtx.fillText("r",axisConf.x*1.5+10,axisConf.y*1.5+35);
+			elmACtx.font="12px Arial ";
+			elmACtx.fillText("\u01C1",axisConf.x*1.5+14,axisConf.y*1.5+19);
+			elmACtx.fillText("\u22A5",axisConf.x*1.5+14,axisConf.y*1.5+37);
+			
+			elmACtx.beginPath();
+			elmACtx.strokeStyle=colorPa;
+			elmACtx.moveTo(axisConf.x*1.5+40,axisConf.y*1.5+12);
+			elmACtx.lineTo(axisConf.x*1.5+60,axisConf.y*1.5+12);
+			
+			elmACtx.stroke();
+
+			elmACtx.beginPath();
+			elmACtx.strokeStyle=colorPe;
+			elmACtx.moveTo(axisConf.x*1.5+40,axisConf.y*1.5+32);
+			elmACtx.lineTo(axisConf.x*1.5+60,axisConf.y*1.5+32);
+			elmACtx.stroke();
+			
+			
+			var dataReflexionPaMod=[];
+			var dataReflexionPeMod=[];
+
+			var dataReflexionPaAngle=[];
+			var dataReflexionPeAngle=[];
+			
+			var step=Math.PI/2/200;
+			var endd=Math.PI/2;
+
+			var rPa, rPe;
+
+			var maxMod=nComplex.rPa(n,_n, step).mod();
+			var minMod=nComplex.rPa(n,_n, step).mod();
+
+			var maxAng=nComplex.rPe(n,_n, step).angle();
+			var minAng=nComplex.rPe(n,_n, step).angle();
+
+			for(var i = step; i<endd; i+=step){
+				rPa=nComplex.rPa(n,_n, i);
+				rPe=nComplex.rPe(n,_n, i);
+
+				if(maxMod<rPa.mod()){maxMod=rPa.mod();}
+				if(maxMod<rPe.mod()){maxMod=rPe.mod();}
+
+				if(minMod>rPa.mod()){minMod=rPa.mod();}
+				if(minMod>rPe.mod()){minMod=rPe.mod();}
+
+				if(maxAng<rPa.angle()){maxAng=rPa.angle();}
+				if(maxAng<rPe.angle()){maxAng=rPe.angle();}
+
+				if(minAng>rPa.angle()){minAng=rPa.angle();}
+				if(minAng>rPe.angle()){minAng=rPe.angle();}
+
+				dataReflexionPaMod.push([i,rPa.mod()]);
+				dataReflexionPeMod.push([i,rPe.mod()]);
+
+				dataReflexionPaAngle.push([i,rPa.angle()]);
+				dataReflexionPeAngle.push([i,rPe.angle()]);
+			}
+			plot(elmA, dataReflexionPeMod, colorPe, [0, Math.PI/2], [0, 1]);
+			plot(elmA, dataReflexionPaMod, colorPa, [0, Math.PI/2], [0, 1]);
+			
+
+			plot(elm, dataReflexionPaAngle, colorPa, [0, Math.PI/2], [0, maxAng]);
+			plot(elm, dataReflexionPeAngle, colorPe, [0, Math.PI/2], [0, maxAng]);
+			
+
+		}
+
+		plotter.plotReflexionPeComplex=function(n,_n){
+			var elm=document.getElementById('canvas_reflexion_factor');
+			clean(elm);
+			
+
+		}
+
+		plotter.plotTransmissionPaComplex=function(n,_n){
+			var elm=document.getElementById('canvas_transmision');
+			clean(elm);
+
+		}
+
+
+		
+
+		plotter.plotTransmissionPeComplex=function(n,_n){
+			var elm=document.getElementById('canvas_transmision_factor');
+			clean(elm);
+
+		}
+
 
 
 		var nReal=nReal||{};
@@ -161,48 +630,204 @@
 			var _phi=refractAngle(n,_n, phi);
 			var a;
 			a=n*Math.cos(phi);
-			return 2*a/(a+_n*Math.cos(_phi));
+			var r=2*a/(a+_n*Math.cos(_phi));
+			return (r==r)?r:0;
 		}
 
 		nReal.tPa=function(n,_n, phi){// Transmision paralela
 			var _phi=refractAngle(n,_n, phi);
-			return 2*n*Math.cos(phi)/(n*Math.cos(_phi)+_n*Math.cos(phi));
+			var r=2*n*Math.cos(phi)/(n*Math.cos(_phi)+_n*Math.cos(phi));
+			return (r==r)?r:0;
 		}
 
 		nReal.rPe=function(n,_n, phi){// Reflexión perpendicular
 			var _phi=refractAngle(n,_n, phi);
-			return (n*Math.cos(phi)-_n*Math.cos(_phi))/(n*Math.cos(phi)+_n*Math.cos(_phi));
+			var r=(n*Math.cos(phi)-_n*Math.cos(_phi))/(n*Math.cos(phi)+_n*Math.cos(_phi));
+			return (r==r)?r:1;
 		}
 
 		nReal.rPa=function(n,_n, phi){// Reflexión paralela
 			var _phi=refractAngle(n,_n, phi);
-			return (n*Math.cos(_phi)-_n*Math.cos(phi))/(n*Math.cos(_phi)+_n*Math.cos(phi));
+			var r= (n*Math.cos(_phi)-_n*Math.cos(phi))/(n*Math.cos(_phi)+_n*Math.cos(phi));
+			return (r==r)?r:-1;
+		}
+
+
+		var nComplex=nComplex||{};
+		nComplex.tPe=function(n,_n, phi){// Transmision perpendicular
+
+			var n_cosphi_=nComplex.cosRefractAngle(n,_n, phi).mul(new Complex(_n));
+			var ncosphi=n*Math.cos(phi);
+
+			var r=new Complex({re: 2*ncosphi});
+			var s=n_cosphi_.add(ncosphi);
+
+			return r.div(s);
+		}
+
+		nComplex.tPa=function(n,_n, phi){// Transmision paralela
+
+			var ncosphi_=nComplex.cosRefractAngle(n,_n, phi).mul(new Complex({re:n}));
+			var n_cosphi=(new Complex(_n)).mul(Math.cos(phi));
+
+			var r=new Complex({re: 2*n*Math.cos(phi)});
+			var s=ncosphi_.add(n_cosphi);
+
+			return r.div(s);
+		}
+
+		nComplex.rPe=function(n,_n, phi){// Reflexión perpendicular
+			var c_n=new Complex(_n);
+			var n_cosphi_=nComplex.cosRefractAngle(n,_n, phi).mul(c_n);
+			var ncosphi=new Complex({re:n*Math.cos(phi)});
+			var r=ncosphi.sub(n_cosphi_);
+			var s=ncosphi.add(n_cosphi_);
+			return r.div(s);
+		}
+
+		nComplex.rPa=function(n,_n, phi){// Reflexión paralela
+			var c_n=new Complex(_n);
+			var ncosphi_=nComplex.cosRefractAngle(n,_n, phi).mul(new Complex({re:n}));
+			var n_cosphi=c_n.mul(Math.cos(phi));
+			var r=ncosphi_.sub(n_cosphi);
+			var s=ncosphi_.add(n_cosphi);
+			return r.div(s);
+		}
+
+		nComplex.cosRefractAngle=function(n,_n, phi){												// Returns complex
+			var arg=new Complex({re: n*Math.sin(phi), im: 0});
+			arg=arg.div(new Complex(_n));
+			arg=arg.mul(arg);
+			arg=(new Complex({re:1})).sub(arg);
+			return Complex.sqrt(arg);
+
 		}
 
 		function transmisionGo(){
 			var n=document.getElementById("n_r").value;
 			var _n=document.getElementById("np_r").value;
-			plotter.plotNTransmission(n,_n);
+
+			
+			if((new Complex(_n)).im==0){
+				document.getElementById("tc_text").innerText="Transmision coefficient:";
+				plotter.plotNTransmission(n,_n);
+			}else{
+				document.getElementById("tc_text").innerText="Reflexion coefficient modulo:";
+				plotter.plotTransmissionPaComplex(n,_n);
+			}
+		}
+
+		function reflexionGo(){
+			var n=document.getElementById("n_r").value;
+			var _n=document.getElementById("np_r").value;
+			if((new Complex(_n)).im==0){
+				document.getElementById("rc_text").innerText="Reflexion coefficient:";
+				plotter.plotNReflexion(n,_n);
+			}else{
+				document.getElementById("rc_text").innerText="Reflexion phase:";
+				plotter.plotReflexionComplex(n,_n);
+			}
+		}
+
+		function transmisionFGo(){
+			var n=document.getElementById("n_r").value;
+			var _n=document.getElementById("np_r").value;
+			
+			if((new Complex(_n)).im==0){
+				document.getElementById("tF_text").innerText="Transmision coefficient:";
+				plotter.plotNTransmissionF(n,_n);
+			}else{
+				document.getElementById("tF_text").innerText="";
+				plotter.plotTransmissionPeComplex(n,_n);
+			}
+		}
+
+		function reflexionFGo(){
+			var n=document.getElementById("n_r").value;
+			var _n=document.getElementById("np_r").value;
+			if((new Complex(_n)).im==0){
+				document.getElementById("rF_text").innerText="Transmision coefficient:";
+				plotter.plotNReflexionF(n,_n);
+			}else{
+				document.getElementById("rF_text").innerText="";
+				plotter.plotReflexionPeComplex(n,_n);
+			}
+		}
+
+		function allGo(){
+			transmisionGo();
+			reflexionGo();
+			transmisionFGo();
+			reflexionFGo();
 		}
 
 		window.onload=function(){
-			canvas_transmision_ctx=document.getElementById('canvas_transmision').getContext("2d");
-			
-			transmisionGo();
+			allGo();
+			document.body.addEventListener("keydown", function(e){e.keyCode==13&&allGo();});
+		}
+
+
+		function performance(n,_n){
+			var t=new Date();
+			var end=Math.PI/2;
+			var step=end/90;
+			for(var i = 0; i<end; i+=step){
+				nComplex.rPe(n,_n, i);
+			}
+			console.log("[COMPLEX]Time = "+((new Date())-t));
+
+			t=new Date();
+			for(var i = 0; i<end; i+=step){
+				nReal.rPe(n,_n, i);
+			}
+			console.log("[REAL]Time = "+((new Date())-t));
 		}
 	</script>
 </head>
 <body>
-	<div id="div_transmission" >
-		<center>Transmission coefficient:</center><br>
+
+	<table border="0">
+	<tr>
+	<td>
+		<span id="tc_text">Transmission coefficient:</span><br>
 		<canvas id="canvas_transmision" width="600" height="400"></canvas>
-		<table border="0">
-		<tr><td>n=</td><td><input type="text" value="1" style="width:50px" id="n_r"></td><td>n'=</td><td><input type="text" value="1.5" style="width:50px" id="np_r"></td>
-		<td><input type="button" value="GO" onClick="transmisionGo()"></td>
-		<td>T<sub>&#8741;</sub>=<span id="tPa_info">-</span>, T<sub>&#8869;</sub>=<span id="tPe_info">-</span>
-		</tr>
+		</td>
+		<td>
+
+
+		<span id="rc_text">Reflexion coefficient:</span><br>
+		<canvas id="canvas_reflexion" width="600" height="400"></canvas>
+		
+	</td>
+	<td>
+		<center>Information:</center><br>
+			<table border="0">
+				<tr>
+					<td>n=</td><td><input type="text" value="1" style="width:50px" id="n_r"></td>
+				</tr>
+				<tr><!--3.47-1.4i-->
+					<td>n'=</td><td><input type="text" value="1.33" style="width:50px" id="np_r"></td>
+				</tr>
+				<tr>
+					<td><input type="button" value="GO" onClick="allGo()"></td>
+				</tr>
 		</table>
-	</div>
+	</td>
+	</tr>
+	<tr>
+		<td>
+			<span id="tF_text">Transmission factor:</span><br>
+			<canvas id="canvas_transmision_factor" width="600" height="400"></canvas>
+			</td>
+			<td>
+
+
+			<span id="rF_text">Reflexion factor:</span><br>
+			<canvas id="canvas_reflexion_factor" width="600" height="400"></canvas>
+			
+		</td>
+	</tr>
+	</table>
 
 </body>
 </html>
